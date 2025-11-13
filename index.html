@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Forest</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.3/dist/tailwind.min.css" rel="stylesheet">
+<style>
+  body { transition: background-image 0.7s ease-in-out; }
+  textarea { resize: none; }
+</style>
+</head>
+<body class="min-h-screen flex flex-col bg-gray-100">
+
+<header class="bg-white shadow-sm">
+  <div class="max-w-4xl mx-auto flex items-center justify-between p-4">
+    <h1 class="text-xl font-bold">Digital Forest</h1>
+    <nav class="flex gap-3">
+      <button onclick="navigate('home')" id="nav-home" class="px-3 py-1 rounded bg-green-100">홈</button>
+      <button onclick="navigate('diary')" id="nav-diary" class="px-3 py-1 rounded">감정일기</button>
+      <button onclick="navigate('shared')" id="nav-shared" class="px-3 py-1 rounded">공유의 숲</button>
+    </nav>
+  </div>
+</header>
+
+<main class="flex-1 max-w-4xl mx-auto w-full p-6" id="main-content"></main>
+
+<footer class="p-4 text-center text-xs text-gray-600">Digital Forest — 로컬 데모. 익명으로 저장됩니다.</footer>
+
+<script>
+const MOODS = {
+  tired: { label: '지침', bg: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=60', audio: 'https://cdn.pixabay.com/download/audio/2022/03/14/audio_1b02f1b4f3.mp3', desc: '나무 사이 햇살이 천천히 에너지를 채워줍니다.'},
+  anxious: { label: '불안', bg: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=60', audio: 'https://cdn.pixabay.com/download/audio/2022/03/22/audio_4f81e8c4bb.mp3', desc: '깊은 숨과 잔잔한 숲소리가 긴장을 풀어줍니다.'},
+  depressed: { label: '우울', bg: 'https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=1400&q=60', audio: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_148c4b3482.mp3', desc: '잔잔한 물결이 마음을 달래줍니다.'},
+  angry: { label: '화남', bg: 'https://images.unsplash.com/photo-1503435824048-a799cd2a0bfd?auto=format&fit=crop&w=1400&q=60', audio: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_8a4a8c39e1.mp3', desc: '따스한 햇살이 서서히 분노를 녹여줍니다.'},
+  unpleasant: { label: '불쾌', bg: 'https://images.unsplash.com/photo-1506765515384-028b60a970df?auto=format&fit=crop&w=1400&q=60', audio: 'https://cdn.pixabay.com/download/audio/2021/09/06/audio_10d4b2c2e3.mp3', desc: '맑은 공기와 새소리가 상쾌함을 불러옵니다.'}
+};
+
+const COMFORT_PHRASES = ['당신의 감정은 유효해요.', '숨을 깊게 들이쉬고 천천히 내쉬어 보세요.', '지금의 당신도 충분히 잘하고 있어요.', '작은 쉼이 큰 회복으로 이어집니다.', '숲은 늘 그 자리에 있어요. 잠시 쉬어가도 좋아요.'];
+const STORAGE_KEY = 'digital_forest_entries_html';
+let currentMood = 'tired';
+let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+function navigate(route){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('bg-green-100'));
+  document.getElementById('nav-'+route).classList.add('bg-green-100');
+  if(route==='home'){ renderHome(); }
+  else if(route==='diary'){ renderDiary(); }
+  else if(route==='shared'){ renderShared(); }
+}
+
+function renderHome(){
+  document.getElementById('main-content').innerHTML = `
+    <div class="rounded-2xl overflow-hidden shadow-lg relative" style="background-image:url(${MOODS[currentMood].bg}); background-size:cover; background-position:center; min-height:300px;">
+      <div class="p-8 bg-gradient-to-t from-black/40 to-transparent text-white">
+        <h2 class="text-3xl font-bold">당신의 마음이 쉴 수 있는 숲으로</h2>
+        <p class="mt-2">짧은 시간을 내어 숨을 고르고, 자연을 떠올려 보세요.</p>
+        <div class="mt-4 flex gap-3 flex-wrap">
+          ${Object.keys(MOODS).map(k=>`<button onclick="setMood('${k}')" class="px-3 py-2 rounded bg-white/30">${MOODS[k].label}</button>`).join('')}
+          <button onclick="playSound()" class="px-3 py-2 rounded bg-white">사운드 재생</button>
+        </div>
+        <audio id="audio-player"></audio>
+      </div>
+    </div>
+  `;
+}
+
+function renderDiary(){
+  document.getElementById('main-content').innerHTML = `
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="rounded-lg overflow-hidden" style="background-image:url(${MOODS[currentMood].bg}); background-size:cover; background-position:center; min-height:220px;">
+        <div class="p-6 bg-gradient-to-t from-black/40 to-transparent text-white h-full">
+          <h3 class="text-2xl font-bold">오늘의 기분: ${MOODS[currentMood].label}</h3>
+          <p class="mt-2">${MOODS[currentMood].desc}</p>
+          <button onclick="playSound()" class="mt-4 px-3 py-2 rounded bg-white text-sm">사운드 재생</button>
+          <audio id="audio-player"></audio>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg p-4 shadow">
+        <h4 class="font-semibold">감정 일기</h4>
+        <div class="mt-3 flex gap-2 flex-wrap">
+          ${Object.keys(MOODS).map(k=>`<button onclick="setMood('${k}')" class="px-3 py-1 rounded ${currentMood===k?'bg-green-100':''}">${MOODS[k].label}</button>`).join('')}
+        </div>
+        <textarea id="diary-text" placeholder="지금 느끼는 감정을 적어보세요..." class="w-full mt-3 h-40 p-2 border rounded"></textarea>
+        <div class="flex items-center gap-3 mt-3">
+          <button onclick="saveDiary()" class="px-4 py-2 rounded bg-green-200">저장하기</button>
+          <span id="message" class="text-sm text-green-700"></span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderShared(){
+  document.getElementById('main-content').innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold">공유의 숲 — 익명 일기</h3>
+      <button onclick="clearAll()" class="px-3 py-1 rounded bg-red-100 text-sm">모두 삭제</button>
+    </div>
+    ${entries.length===0?'<div class="bg-white p-6 rounded shadow text-center">아직 저장된 일기가 없어요. 당신의 첫 나뭇잎이 되어볼래요?</div>':''}
+    <div class="grid gap-3">
+      ${[...entries].sort((a,b)=>b.id-a.id).map((e,idx)=>`<div class="bg-white p-4 rounded shadow"><div class="flex items-center justify-between text-xs text-gray-500"><div>익명 나뭇잎 🌿 #${entries.length-idx}</div><div>${new Date(e.ts).toLocaleString()}</div></div><div class="mt-2 text-sm"><strong class="text-sm mr-2">기분: ${MOODS[e.mood]?.label || e.mood}</strong><div class="mt-1">${e.text}</div></div></div>`).join('')}
+    </div>
+  `;
+}
+
+function setMood(mood){ currentMood=mood; navigate('diary'); }
+
+function playSound(){
+  const audio = document.getElementById('audio-player');
+  if(audio){ audio.src = MOODS[currentMood].audio; audio.play().catch(()=>{}); }
+}
+
+function saveDiary(){
+  const text = document.getElementById('diary-text').value.trim();
+  if(!text){ document.getElementById('message').innerText='일기를 입력해 주세요.'; setTimeout(()=>document.getElementById('message').innerText='',2000); return; }
+  const entry={id:Date.now(), mood:currentMood, text, ts:new Date().toISOString()};
+  entries.push(entry);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  document.getElementById('diary-text').value='';
+  document.getElementById('message').innerText = COMFORT_PHRASES[Math.floor(Math.random()*COMFORT_PHRASES.length)];
+  setTimeout(()=>document.getElementById('message').innerText='',3000);
+}
+
+function clearAll(){ if(confirm('로컬에 저장된 모든 일기를 삭제하시겠어요?')){ entries=[]; localStorage.removeItem(STORAGE_KEY); navigate('shared'); } }
+
+navigate('home');
+</script>
+
+</body>
+</html>
